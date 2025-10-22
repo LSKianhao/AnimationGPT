@@ -26,8 +26,12 @@ from temporal_filters import apply_motion_smoothing_pipeline, analyze_motion_smo
 from config_loader import load_config
 from physical_metrics import compute_all_metrics, print_metrics_report, compare_metrics
 
-# Import foot contact fixing
-sys.path.insert(0, str(Path(__file__).parent / 'tools' / 'npy2bvh' / 'visualization'))
+# Import foot contact fixing (with proper path setup)
+visualization_path = str(Path(__file__).parent / 'tools' / 'npy2bvh' / 'visualization')
+sys.path.insert(0, visualization_path)
+sys.path.insert(0, str(Path(__file__).parent / 'tools' / 'npy2bvh'))
+
+# Now we can import
 from remove_fs import remove_fs
 
 

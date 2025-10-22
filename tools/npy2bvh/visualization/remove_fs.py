@@ -1,14 +1,27 @@
 import os
 import sys
 import numpy as np
-import torch
 import argparse
 
 from os.path import join as pjoin
 
+# Optional torch import (only needed for advanced IK class at end of file)
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+# Optional IK imports (not needed for basic remove_fs functionality)
+try:
+    from visualization.InverseKinematics import JacobianInverseKinematics, BasicInverseKinematics
+    IK_AVAILABLE = True
+except ImportError:
+    IK_AVAILABLE = False
+    JacobianInverseKinematics = None
+    BasicInverseKinematics = None
 
 # from visualization import BVH
-from visualization.InverseKinematics import JacobianInverseKinematics, BasicInverseKinematics
 # from scripts.motion_process_bvh import *
 # from visualization.Animation import *
 
@@ -42,14 +55,14 @@ def remove_fs_old(anim, glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_le
             feet_l_y = (positions[1:, fid_l, 1] - positions[:-1, fid_l, 1]) ** 2
             feet_l_z = (positions[1:, fid_l, 2] - positions[:-1, fid_l, 2]) ** 2
             feet_l_h = positions[:-1, fid_l, 1]
-            feet_l = (((feet_l_x + feet_l_y + feet_l_z) < velfactor) & (feet_l_h < heightfactor)).astype(np.float)
+            feet_l = (((feet_l_x + feet_l_y + feet_l_z) < velfactor) & (feet_l_h < heightfactor)).astype(np.float64)
 
             feet_r_x = (positions[1:, fid_r, 0] - positions[:-1, fid_r, 0]) ** 2
             feet_r_y = (positions[1:, fid_r, 1] - positions[:-1, fid_r, 1]) ** 2
             feet_r_z = (positions[1:, fid_r, 2] - positions[:-1, fid_r, 2]) ** 2
             feet_r_h = positions[:-1, fid_r, 1]
 
-            feet_r = (((feet_r_x + feet_r_y + feet_r_z) < velfactor) & (feet_r_h < heightfactor)).astype(np.float)
+            feet_r = (((feet_r_x + feet_r_y + feet_r_z) < velfactor) & (feet_r_h < heightfactor)).astype(np.float64)
 
             return feet_l, feet_r
 
@@ -227,14 +240,14 @@ def remove_fs(glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_length=5,
             feet_l_y = (positions[1:, fid_l, 1] - positions[:-1, fid_l, 1]) ** 2
             feet_l_z = (positions[1:, fid_l, 2] - positions[:-1, fid_l, 2]) ** 2
             feet_l_h = positions[:-1, fid_l, 1]
-            feet_l = (((feet_l_x + feet_l_y + feet_l_z) < velfactor) & (feet_l_h < heightfactor)).astype(np.float)
+            feet_l = (((feet_l_x + feet_l_y + feet_l_z) < velfactor) & (feet_l_h < heightfactor)).astype(np.float64)
 
             feet_r_x = (positions[1:, fid_r, 0] - positions[:-1, fid_r, 0]) ** 2
             feet_r_y = (positions[1:, fid_r, 1] - positions[:-1, fid_r, 1]) ** 2
             feet_r_z = (positions[1:, fid_r, 2] - positions[:-1, fid_r, 2]) ** 2
             feet_r_h = positions[:-1, fid_r, 1]
 
-            feet_r = (((feet_r_x + feet_r_y + feet_r_z) < velfactor) & (feet_r_h < heightfactor)).astype(np.float)
+            feet_r = (((feet_r_x + feet_r_y + feet_r_z) < velfactor) & (feet_r_h < heightfactor)).astype(np.float64)
 
             return feet_l, feet_r
 
