@@ -170,12 +170,57 @@ def remove_fs_old(anim, glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_le
 
 
 
-def remove_fs(glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_length=5, force_on_floor=True):
-    # glb_height = 2.06820832 Not the case, may be use upper leg length
-    scale = 1. #glb_height / 1.65 #scale to meter
-    # fps = 20 #
-    # velocity_thres = 10. # m/s
-    height_thres = [0.06, 0.03] #[ankle, toe] meter
+def compute_adaptive_thresholds(glb, fid_l=(3, 4), fid_r=(7, 8), percentile=15):
+    """
+    Compute adaptive velocity thresholds based on motion statistics.
+
+    Args:
+        glb: Joint positions (T, J, 3)
+        fid_l: Left foot joint indices (ankle, toe)
+        fid_r: Right foot joint indices (ankle, toe)
+        percentile: Percentile for threshold (lower = more strict)
+
+    Returns:
+        Adaptive velocity thresholds for [ankle, toe]
+    """
+    velocities = np.sqrt(np.sum((glb[1:] - glb[:-1]) ** 2, axis=-1))
+
+    # Get foot velocities
+    ankle_vels = np.concatenate([velocities[:, fid_l[0]], velocities[:, fid_r[0]]])
+    toe_vels = np.concatenate([velocities[:, fid_l[1]], velocities[:, fid_r[1]]])
+
+    # Use percentile-based thresholds
+    ankle_threshold = np.percentile(ankle_vels, percentile)
+    toe_threshold = np.percentile(toe_vels, percentile)
+
+    # Clamp to reasonable ranges to avoid extreme values
+    ankle_threshold = np.clip(ankle_threshold, 0.02, 0.15)
+    toe_threshold = np.clip(toe_threshold, 0.05, 0.30)
+
+    return np.array([ankle_threshold, toe_threshold])
+
+
+def remove_fs(glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_length=5,
+              force_on_floor=True, adaptive_thresholds=True, velocity_percentile=15):
+    """
+    Remove foot sliding artifacts from motion data.
+
+    Args:
+        glb: Global joint positions (T, J, 3)
+        foot_contact: Optional binary foot contact labels (4, T)
+        fid_l: Left foot joint indices (ankle, toe)
+        fid_r: Right foot joint indices (ankle, toe)
+        interp_length: Interpolation window size for smoothing
+        force_on_floor: If True, force contacted feet to y=0
+        adaptive_thresholds: If True, compute thresholds from motion statistics
+        velocity_percentile: Percentile for adaptive threshold computation
+
+    Returns:
+        Joint positions with reduced foot sliding
+    """
+    scale = 1.0
+    height_thres = [0.06, 0.03]  # [ankle, toe] meter - default values
+
     if foot_contact is None:
         def foot_detect(positions, velfactor, heightfactor):
             feet_l_x = (positions[1:, fid_l, 0] - positions[:-1, fid_l, 0]) ** 2
@@ -193,10 +238,12 @@ def remove_fs(glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_length=5, fo
 
             return feet_l, feet_r
 
-        # feet_thre = 0.002
-        # feet_vel_thre = np.array([velocity_thres**2, velocity_thres**2]) * scale**2 / fps**2
-        feet_vel_thre = np.array([0.05, 0.2])
-        # height_thre = np.array([0.06, 0.04]) * scale
+        # Adaptive or fixed thresholds
+        if adaptive_thresholds:
+            feet_vel_thre = compute_adaptive_thresholds(glb, fid_l, fid_r, percentile=velocity_percentile)
+        else:
+            feet_vel_thre = np.array([0.05, 0.2])
+
         feet_h_thre = np.array(height_thres) * scale
         feet_l, feet_r = foot_detect(glb, velfactor=feet_vel_thre, heightfactor=feet_h_thre)
         foot = np.concatenate([feet_l, feet_r], axis=-1).transpose(1, 0)  # [4, T-1]
@@ -295,17 +342,11 @@ def remove_fs(glb, foot_contact, fid_l=(3, 4), fid_r=(7, 8), interp_length=5, fo
                             glb[s, fidx], glb[r, fidx])
                 glb[s, fidx] = ritp.copy()
 
-    targetmap = {}
-    for j in range(glb.shape[1]):
-        targetmap[j] = glb[:, j]
-
-    # ik = BasicInverseKinematics(anim, glb, iterations=5,
-    #                             silent=True)
-
-    # slightly larger loss, but better visual
-    # ik = JacobianInverseKinematics(anim, targetmap, iterations=30, damping=5, recalculate=False, silent=True)
-
-    # anim = ik()
+    # Note: IK optimization was previously disabled here (commented out).
+    # The foot-fixed positions should be returned as-is, and IK should be
+    # applied separately by the caller (e.g., in joints2bvh.py) after
+    # creating an animation object with proper skeleton structure.
+    # This maintains backward compatibility while still fixing foot sliding.
     return glb
 
 
