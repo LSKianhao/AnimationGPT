@@ -37,11 +37,16 @@ METRIC:
 
 LOSS:
   LAMBDA_FEATURE: 1.0
-  LAMBDA_VELOCITY: 0.5
+  LAMBDA_VELOCITY: 1.5  # INCREASED from 0.5 to improve temporal smoothness
   LAMBDA_COMMIT: 0.02
   LAMBDA_CLS: 1.0
   ABLATION:
     RECONS_LOSS: 'l1_smooth'
+
+  # Note: To further improve quality, consider adding custom loss terms:
+  # - LAMBDA_FOOT_CONTACT: 0.3  # Penalize foot sliding during contact
+  # - LAMBDA_ACCELERATION: 0.2  # Penalize sudden jerky motion
+  # These require modifications to the MotionGPT model code
 
 model:
   target: mGPT.models.mgpt.MotionGPT
