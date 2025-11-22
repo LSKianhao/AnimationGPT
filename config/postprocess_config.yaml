@@ -1,0 +1,174 @@
+# Post-Processing Configuration for AnimationGPT
+# This file controls motion quality improvements applied after generation
+
+# Foot Contact Detection and Fixing
+foot_contact:
+  # Use adaptive thresholds based on motion statistics
+  adaptive_thresholds: true
+
+  # Percentile for adaptive threshold computation (lower = stricter detection)
+  # Range: 10-25. Default: 15
+  velocity_percentile: 15
+
+  # Fixed velocity thresholds (used when adaptive_thresholds=false)
+  # [ankle_threshold, toe_threshold] in units per frame
+  fixed_velocity_thresholds: [0.05, 0.2]
+
+  # Height thresholds for foot contact detection
+  # [ankle_height, toe_height] in meters
+  height_thresholds: [0.06, 0.03]
+
+  # Interpolation window size for smoothing between contact and non-contact
+  interpolation_length: 5
+
+  # Force contacted feet to exactly y=0 (ground plane)
+  force_on_floor: true
+
+  # Foot joint indices [left_ankle, left_toe, right_ankle, right_toe]
+  foot_indices:
+    left: [3, 4]
+    right: [7, 8]
+
+
+# Temporal Smoothing (reduces jitter and jerky motion)
+temporal_smoothing:
+  # Enable temporal smoothing
+  enabled: true
+
+  # Smoothing method: 'gaussian', 'savgol', or 'butterworth'
+  method: 'gaussian'
+
+  # Gaussian smoothing parameters
+  gaussian:
+    sigma: 1.5  # Standard deviation (higher = more smoothing). Range: 1.0-3.0
+
+  # Savitzky-Golay filter parameters (better at preserving sharp features)
+  savgol:
+    window_length: 7  # Must be odd. Range: 5-11
+    polyorder: 2      # Polynomial order. Range: 2-3
+
+  # Butterworth low-pass filter parameters
+  butterworth:
+    cutoff_freq: 0.3  # Fraction of Nyquist frequency. Range: 0.2-0.4
+    fps: 30          # Animation frame rate
+
+  # Don't smooth root joint to preserve trajectory
+  preserve_root: true
+
+
+# Velocity Clipping (prevents unrealistic fast movements)
+velocity_clipping:
+  # Enable velocity clipping
+  enabled: true
+
+  # Maximum allowed joint velocity (units per frame)
+  # Range: 0.3-0.8. Lower = more conservative
+  max_velocity: 0.5
+
+  # Don't clip root joint velocity
+  preserve_root: true
+
+
+# Inverse Kinematics Refinement
+inverse_kinematics:
+  # Enable IK optimization (strongly recommended)
+  enabled: true
+
+  # IK solver type: 'basic' or 'jacobian'
+  solver: 'basic'
+
+  # Number of IK iterations
+  # Higher = more accurate but slower. Range: 5-30
+  iterations: 10
+
+  # Damping factor for Jacobian IK (only used if solver='jacobian')
+  # Higher = more stable but slower convergence. Range: 2.0-10.0
+  damping: 5.0
+
+  # Recalculate Jacobian each iteration (slower but more accurate)
+  recalculate: false
+
+  # Suppress IK solver output messages
+  silent: true
+
+
+# Physical Constraints
+physical_constraints:
+  # Enable joint angle limits (experimental - requires implementation)
+  joint_limits_enabled: false
+
+  # Enable self-collision detection (experimental - requires implementation)
+  collision_detection_enabled: false
+
+  # Minimum allowed height (prevent ground penetration)
+  min_height: 0.0
+
+
+# Visualization Settings
+visualization:
+  # Frame rate for output video
+  fps: 30
+
+  # Visualization scale/radius
+  radius: 4
+
+  # Camera settings
+  camera:
+    elevation: 120
+    azimuth: -90
+    distance: 7.5
+
+  # Output video codec (if using ffmpeg)
+  codec: 'libx264'
+  crf: 18  # Quality (lower = better, range: 0-51)
+
+
+# Processing Pipeline Order
+# Specify the order of post-processing operations
+pipeline:
+  order:
+    - 'foot_contact_fixing'
+    - 'temporal_smoothing'
+    - 'velocity_clipping'
+    - 'inverse_kinematics'
+
+  # Skip certain stages (for debugging/comparison)
+  skip_stages: []
+
+
+# Quality Presets (override individual settings)
+# Options: 'fast', 'balanced', 'quality', 'custom'
+preset: 'balanced'
+
+# Preset definitions (applied when preset != 'custom')
+presets:
+  fast:
+    temporal_smoothing.enabled: false
+    inverse_kinematics.iterations: 5
+    foot_contact.adaptive_thresholds: false
+
+  balanced:
+    temporal_smoothing.gaussian.sigma: 1.5
+    inverse_kinematics.iterations: 10
+    velocity_clipping.max_velocity: 0.5
+
+  quality:
+    temporal_smoothing.gaussian.sigma: 2.0
+    inverse_kinematics.iterations: 20
+    velocity_clipping.max_velocity: 0.4
+    foot_contact.interpolation_length: 7
+
+
+# Debug/Logging
+debug:
+  # Print processing statistics
+  verbose: false
+
+  # Save intermediate results for comparison
+  save_intermediate: false
+
+  # Output directory for intermediate files
+  intermediate_dir: './debug_output'
+
+  # Compute and print quality metrics
+  compute_metrics: true
